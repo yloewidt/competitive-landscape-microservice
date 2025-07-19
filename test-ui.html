@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competitive Landscape Microservice Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .health-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+        .health-indicator.healthy {
+            background: #28a745;
+        }
+        .health-indicator.unhealthy {
+            background: #dc3545;
+        }
+        .job-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .job-status.pending {
+            background: #ffc107;
+            color: #000;
+        }
+        .job-status.running {
+            background: #17a2b8;
+            color: #fff;
+        }
+        .job-status.completed {
+            background: #28a745;
+            color: #fff;
+        }
+        .job-status.failed {
+            background: #dc3545;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Competitive Landscape Microservice Test Interface</h1>
+        
+        <!-- Configuration Section -->
+        <div class="section">
+            <h2>Configuration</h2>
+            <label>API URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:3700" />
+            
+            <label>API Key:</label>
+            <input type="text" id="apiKey" value="test-api-key" />
+            
+            <button onclick="testHealth()">Test Health</button>
+            <span id="healthStatus"></span>
+        </div>
+
+        <!-- Create Analysis Section -->
+        <div class="section">
+            <h2>Create Competitive Analysis</h2>
+            <label>Solution Description:</label>
+            <textarea id="solutionDescription" rows="4" placeholder="Describe your solution...">AI-powered customer service chatbot for e-commerce that uses natural language processing to handle customer inquiries, provide product recommendations, and process returns</textarea>
+            
+            <label>Industry ID (optional):</label>
+            <input type="text" id="industryId" placeholder="e.g., tech-ai-chatbots" />
+            
+            <button onclick="createAnalysis()" id="createBtn">Create Analysis</button>
+            
+            <div id="createStatus" class="status" style="display: none;"></div>
+        </div>
+
+        <!-- Job Status Section -->
+        <div class="section">
+            <h2>Check Job Status</h2>
+            <label>Job ID:</label>
+            <input type="text" id="jobId" placeholder="Enter job ID" />
+            
+            <button onclick="checkJobStatus()">Check Status</button>
+            <button onclick="pollJobStatus()" id="pollBtn">Start Polling</button>
+            <button onclick="stopPolling()" id="stopPollBtn" style="display: none;">Stop Polling</button>
+            
+            <div id="jobStatus" class="status" style="display: none;"></div>
+        </div>
+
+        <!-- Get Analysis Section -->
+        <div class="section">
+            <h2>Get Analysis Results</h2>
+            <label>Analysis ID:</label>
+            <input type="text" id="analysisId" placeholder="Enter analysis ID" />
+            
+            <button onclick="getAnalysis()">Get Analysis</button>
+            
+            <div id="analysisResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- List Analyses Section -->
+        <div class="section">
+            <h2>List All Analyses</h2>
+            <button onclick="listAnalyses()">List Analyses</button>
+            
+            <div id="analysesList" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let pollingInterval = null;
+
+        async function makeRequest(endpoint, method = 'GET', body = null) {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            const options = {
+                method,
+                headers: {
+                    'X-API-Key': apiKey,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+            
+            try {
+                const response = await fetch(`${apiUrl}${endpoint}`, options);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+                
+                return data;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        async function testHealth() {
+            const healthIndicator = document.getElementById('healthStatus');
+            try {
+                const data = await makeRequest('/health');
+                healthIndicator.innerHTML = `<span class="health-indicator healthy"></span> Healthy (${data.environment})`;
+            } catch (error) {
+                healthIndicator.innerHTML = `<span class="health-indicator unhealthy"></span> Unhealthy: ${error.message}`;
+            }
+        }
+
+        async function createAnalysis() {
+            const statusDiv = document.getElementById('createStatus');
+            const createBtn = document.getElementById('createBtn');
+            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status pending';
+            statusDiv.textContent = 'Creating analysis...';
+            createBtn.disabled = true;
+            
+            try {
+                const solutionDescription = document.getElementById('solutionDescription').value;
+                const industryId = document.getElementById('industryId').value;
+                
+                const body = { solutionDescription };
+                if (industryId) {
+                    body.industryId = industryId;
+                }
+                
+                const data = await makeRequest('/api/competitive-landscape/analyze', 'POST', body);
+                
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = `
+                    <strong>Analysis Queued!</strong><br>
+                    Job ID: <code>${data.jobId}</code><br>
+                    Status: <span class="job-status ${data.status}">${data.status}</span><br>
+                    <button onclick="document.getElementById('jobId').value='${data.jobId}'; checkJobStatus()">Check Status</button>
+                `;
+                
+                // Auto-fill job ID
+                document.getElementById('jobId').value = data.jobId;
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `Error: ${error.message}`;
+            } finally {
+                createBtn.disabled = false;
+            }
+        }
+
+        async function checkJobStatus() {
+            const statusDiv = document.getElementById('jobStatus');
+            const jobId = document.getElementById('jobId').value;
+            
+            if (!jobId) {
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Please enter a job ID';
+                return;
+            }
+            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status pending';
+            statusDiv.textContent = 'Checking job status...';
+            
+            try {
+                const data = await makeRequest(`/api/jobs/${jobId}`);
+                
+                statusDiv.className = 'status success';
+                let html = `
+                    <strong>Job Status:</strong> <span class="job-status ${data.status}">${data.status}</span><br>
+                    <strong>Type:</strong> ${data.type}<br>
+                    <strong>Created:</strong> ${new Date(data.created_at).toLocaleString()}<br>
+                `;
+                
+                if (data.started_at) {
+                    html += `<strong>Started:</strong> ${new Date(data.started_at).toLocaleString()}<br>`;
+                }
+                
+                if (data.completed_at) {
+                    html += `<strong>Completed:</strong> ${new Date(data.completed_at).toLocaleString()}<br>`;
+                }
+                
+                if (data.error) {
+                    html += `<strong>Error:</strong> ${data.error}<br>`;
+                    statusDiv.className = 'status error';
+                }
+                
+                if (data.status === 'completed' && data.result?.id) {
+                    html += `<br><button onclick="document.getElementById('analysisId').value='${data.result.id}'; getAnalysis()">View Analysis</button>`;
+                    document.getElementById('analysisId').value = data.result.id;
+                }
+                
+                statusDiv.innerHTML = html;
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function pollJobStatus() {
+            const pollBtn = document.getElementById('pollBtn');
+            const stopPollBtn = document.getElementById('stopPollBtn');
+            
+            pollBtn.style.display = 'none';
+            stopPollBtn.style.display = 'inline-block';
+            
+            // Initial check
+            await checkJobStatus();
+            
+            // Poll every 2 seconds
+            pollingInterval = setInterval(async () => {
+                const statusDiv = document.getElementById('jobStatus');
+                const currentStatus = statusDiv.querySelector('.job-status');
+                
+                if (currentStatus && (currentStatus.textContent === 'completed' || currentStatus.textContent === 'failed')) {
+                    stopPolling();
+                } else {
+                    await checkJobStatus();
+                }
+            }, 2000);
+        }
+
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            
+            document.getElementById('pollBtn').style.display = 'inline-block';
+            document.getElementById('stopPollBtn').style.display = 'none';
+        }
+
+        async function getAnalysis() {
+            const resultDiv = document.getElementById('analysisResult');
+            const analysisId = document.getElementById('analysisId').value;
+            
+            if (!analysisId) {
+                resultDiv.style.display = 'block';
+                resultDiv.textContent = 'Please enter an analysis ID';
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'Loading analysis...';
+            
+            try {
+                const data = await makeRequest(`/api/competitive-landscape/${analysisId}`);
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function listAnalyses() {
+            const listDiv = document.getElementById('analysesList');
+            listDiv.style.display = 'block';
+            listDiv.textContent = 'Loading analyses...';
+            
+            try {
+                const data = await makeRequest('/api/competitive-landscape');
+                listDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                listDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Test health on load
+        window.onload = () => {
+            testHealth();
+        };
+    </script>
+</body>
+</html>
