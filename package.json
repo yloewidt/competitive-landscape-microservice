@@ -1,0 +1,70 @@
+{
+  "name": "competitive-landscape-microservice",
+  "version": "1.0.0",
+  "description": "Microservice for competitive landscape analysis",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "worker": "node src/worker.js",
+    "test": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest --forceExit --detectOpenHandles",
+    "test:watch": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest --watch",
+    "test:coverage": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
+    "lint": "eslint src/",
+    "migrate": "node scripts/migrate.js",
+    "docker:build": "docker build -t competitive-landscape-microservice .",
+    "docker:run": "docker run -p 3700:3700 --env-file .env competitive-landscape-microservice"
+  },
+  "keywords": [
+    "competitive-analysis",
+    "microservice",
+    "cloud-tasks",
+    "openai"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/tasks": "^4.0.0",
+    "@google-cloud/storage": "^7.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "mysql2": "^3.11.4",
+    "openai": "^4.73.1",
+    "sqlite3": "^5.1.6",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "transform": {},
+    "extensionsToTreatAsEsm": [".js"],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "testEnvironmentOptions": {
+      "NODE_OPTIONS": "--experimental-vm-modules"
+    }
+  }
+}

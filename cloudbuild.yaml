@@ -1,0 +1,95 @@
+steps:
+  # Build API image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/competitive-landscape-api', '-f', 'Dockerfile', '.']
+    id: 'build-api'
+
+  # Build Worker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/competitive-landscape-worker', '-f', 'Dockerfile.worker', '.']
+    id: 'build-worker'
+
+  # Push API image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/competitive-landscape-api']
+    id: 'push-api'
+    waitFor: ['build-api']
+
+  # Push Worker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/competitive-landscape-worker']
+    id: 'push-worker'
+    waitFor: ['build-worker']
+
+  # Deploy API to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'competitive-landscape-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/competitive-landscape-api'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--port'
+      - '3700'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,DATABASE_TYPE=mysql,USE_CLOUD_TASKS=true,CLOUD_TASKS_SERVICE_URL=${_WORKER_URL}'
+      - '--add-cloudsql-instances'
+      - '${_CLOUD_SQL_CONNECTION_NAME}'
+      - '--service-account'
+      - '${_API_SERVICE_ACCOUNT}'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+    id: 'deploy-api'
+    waitFor: ['push-api']
+
+  # Deploy Worker to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'competitive-landscape-worker'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/competitive-landscape-worker'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--port'
+      - '8080'
+      - '--no-allow-unauthenticated'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,DATABASE_TYPE=mysql'
+      - '--add-cloudsql-instances'
+      - '${_CLOUD_SQL_CONNECTION_NAME}'
+      - '--service-account'
+      - '${_WORKER_SERVICE_ACCOUNT}'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--max-instances'
+      - '10'
+    id: 'deploy-worker'
+    waitFor: ['push-worker']
+
+images:
+  - 'gcr.io/$PROJECT_ID/competitive-landscape-api'
+  - 'gcr.io/$PROJECT_ID/competitive-landscape-worker'
+
+timeout: '1200s'
+
+substitutions:
+  _REGION: 'us-central1'
+  _CLOUD_SQL_CONNECTION_NAME: 'your-project:us-central1:your-instance'
+  _API_SERVICE_ACCOUNT: 'competitive-api@your-project.iam.gserviceaccount.com'
+  _WORKER_SERVICE_ACCOUNT: 'competitive-worker@your-project.iam.gserviceaccount.com'
+  _WORKER_URL: 'https://competitive-landscape-worker-xxxxx-uc.a.run.app'
